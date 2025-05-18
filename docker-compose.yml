@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # NGINXリバースプロキシ（ALBの代替）
+  nginx:
+    image: nginx:alpine
+    container_name: ecs-multi-streamlit-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app1
+      - app2
+      - app3
+    networks:
+      - streamlit-network
+    restart: unless-stopped
+
+  # App1: データ可視化ダッシュボード
+  app1:
+    build:
+      context: ./apps/app1
+      dockerfile: Dockerfile
+    container_name: ecs-multi-streamlit-app1
+    expose:
+      - "8501"
+    environment:
+      - STREAMLIT_BASE_URL_PATH=/app1
+      - STREAMLIT_ENABLE_CORS=false
+      - STREAMLIT_SERVER_HEADLESS=true
+    volumes:
+      - ./apps/app1:/app:ro  # 開発時の動的リロード用
+    networks:
+      - streamlit-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # App2: 機械学習デモアプリ
+  app2:
+    build:
+      context: ./apps/app2
+      dockerfile: Dockerfile
+    container_name: ecs-multi-streamlit-app2
+    expose:
+      - "8501"
+    environment:
+      - STREAMLIT_BASE_URL_PATH=/app2
+      - STREAMLIT_ENABLE_CORS=false
+      - STREAMLIT_SERVER_HEADLESS=true
+    volumes:
+      - ./apps/app2:/app:ro  # 開発時の動的リロード用
+    networks:
+      - streamlit-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # App3: リアルタイム監視ダッシュボード
+  app3:
+    build:
+      context: ./apps/app3
+      dockerfile: Dockerfile
+    container_name: ecs-multi-streamlit-app3
+    expose:
+      - "8501"
+    environment:
+      - STREAMLIT_BASE_URL_PATH=/app3
+      - STREAMLIT_ENABLE_CORS=false
+      - STREAMLIT_SERVER_HEADLESS=true
+    volumes:
+      - ./apps/app3:/app:ro  # 開発時の動的リロード用
+    networks:
+      - streamlit-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  streamlit-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+# ボリューム（Dockerで管理される永続ストレージ）
+volumes:
+  nginx_logs:
+  app_logs:

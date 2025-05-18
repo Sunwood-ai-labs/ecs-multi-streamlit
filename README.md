@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![ECS Multi Streamlit Banner](docs/images/header-banner_2025-05-18T11-21-40-166Z.png)
+![ECS Multi Streamlit Banner](docs/images/header-banner.png)
 
 <h1>🎯 ECS Multi Streamlit</h1>
 
@@ -51,28 +51,67 @@ Terraformのベストプラクティスに準拠し、モジュール化・環�
 
 ## 🏗️ アーキテクチャ
 
-```
-┌─────────────────────────────────────────────────┐
-│                    Internet                     │
-└─────────────────┬───────────────────────────────┘
-                  │
-         ┌────────▼────────┐
-         │   ALB (公開)     │
-         │ パスベース      │
-         │ ルーティング     │
-         └─┬─────┬─────┬──┘
-       /app1  /app2   /app3
-           │     │     │
-    ┌──────▼┐ ┌──▼──┐ ┌▼────┐
-    │ ECS   │ │ ECS │ │ ECS │
-    │ App1  │ │ App2│ │ App3│
-    │Fargate│ │     │ │     │
-    └───────┘ └─────┘ └─────┘
-           │     │     │
-    ┌──────▼─────▼─────▼─────┐
-    │      VPC Network       │
-    │  Public/Private Subnet │
-    └────────────────────────┘
+```mermaid
+graph TB
+    %% Internet
+    I[🌐 Internet]
+    
+    %% ALB
+    ALB[🔀 Application Load Balancer<br/>パスベースルーティング]
+    
+    %% ECS Services
+    ECS1[📊 ECS Fargate<br/>App1: データ可視化]
+    ECS2[🤖 ECS Fargate<br/>App2: 機械学習デモ]
+    ECS3[📈 ECS Fargate<br/>App3: リアルタイム監視]
+    
+    %% ECR
+    ECR[📦 Amazon ECR<br/>コンテナイメージ]
+    
+    %% VPC
+    subgraph VPC["🏗️ VPC (10.0.0.0/16)"]
+        subgraph Public["📡 パブリックサブネット (10.0.1.0/24)"]
+            ALB
+            NAT[🚪 NAT Gateway]
+        end
+        
+        subgraph Private["🔒 プライベートサブネット (10.0.2.0/24)"]
+            ECS1
+            ECS2
+            ECS3
+        end
+    end
+    
+    %% CloudWatch
+    CW[📊 CloudWatch<br/>監視・ログ]
+    
+    %% Connections
+    I --> ALB
+    ALB --> |/app1| ECS1
+    ALB --> |/app2| ECS2
+    ALB --> |/app3| ECS3
+    
+    ECR -.-> ECS1
+    ECR -.-> ECS2
+    ECR -.-> ECS3
+    
+    Private --> NAT
+    NAT --> I
+    
+    ECS1 --> CW
+    ECS2 --> CW
+    ECS3 --> CW
+    ALB --> CW
+    
+    %% Styling
+    classDef aws fill:#FF9900,stroke:#333,stroke-width:2px,color:#fff
+    classDef app fill:#FF4B4B,stroke:#333,stroke-width:2px,color:#fff
+    classDef network fill:#4CAF50,stroke:#333,stroke-width:2px,color:#fff
+    classDef monitoring fill:#2196F3,stroke:#333,stroke-width:2px,color:#fff
+    
+    class ALB,ECR aws
+    class ECS1,ECS2,ECS3 app
+    class VPC,Public,Private,NAT network
+    class CW monitoring
 ```
 
 ## 🛠️ 技術スタック
